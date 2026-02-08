@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>3D Карта мира + Погода</title>
+<title>3D Земля + Погода</title>
 
 <style>
 body{
@@ -11,7 +11,6 @@ body{
   background:#000;
   font-family:sans-serif;
 }
-
 #ui{
   position:absolute;
   top:10px;
@@ -21,7 +20,6 @@ body{
   border-radius:8px;
   color:#FFA500;
 }
-
 input,button{
   background:#111;
   color:#FFA500;
@@ -34,12 +32,11 @@ input,button{
 
 <div id="ui">
   <input id="city" placeholder="Город">
-  <button onclick="searchCity()">Найти</button>
+  <button onclick="searchCity()">Погода</button>
   <div id="weather"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
 // ===== СЦЕНА =====
@@ -57,31 +54,43 @@ const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// ===== СВЕТ =====
-scene.add(new THREE.AmbientLight(0xffffff,1));
-
-// ===== ЗЕМЛЯ =====
+// ===== СФЕРА (видна сразу) =====
 const geometry = new THREE.SphereGeometry(1,64,64);
 
-const texture = new THREE.TextureLoader().load(
-"https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg"
-);
-
+// БАЗОВЫЙ ОРАНЖЕВЫЙ МАТЕРИАЛ
 const material = new THREE.MeshBasicMaterial({
-  map:texture,
-  color:0xFFA500   // оранжевый тон
+  color:0xFFA500
 });
 
 const earth = new THREE.Mesh(geometry,material);
 scene.add(earth);
 
-// ===== УПРАВЛЕНИЕ =====
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
+// ===== ЗАГРУЗКА КАРТЫ =====
+const loader = new THREE.TextureLoader();
+
+loader.load(
+"https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg",
+
+// УСПЕШНО
+(texture)=>{
+  earth.material = new THREE.MeshBasicMaterial({
+    map:texture
+  });
+},
+
+// ПРОГРЕСС
+undefined,
+
+// ОШИБКА
+()=>{
+  console.log("Текстура не загрузилась — оставлен оранжевый шар");
+}
+);
 
 // ===== ВРАЩЕНИЕ =====
 function animate(){
   requestAnimationFrame(animate);
-  earth.rotation.y += 0.0015;
+  earth.rotation.y += 0.002;
   renderer.render(scene,camera);
 }
 animate();
@@ -96,9 +105,9 @@ function addMarker(lat,lon){
   const y = Math.cos(phi);
   const z = Math.sin(phi)*Math.sin(theta);
 
-  const markerGeo = new THREE.SphereGeometry(0.02,16,16);
-  const markerMat = new THREE.MeshBasicMaterial({color:0xff0000});
-  const marker = new THREE.Mesh(markerGeo,markerMat);
+  const geo = new THREE.SphereGeometry(0.02,16,16);
+  const mat = new THREE.MeshBasicMaterial({color:0xff0000});
+  const marker = new THREE.Mesh(geo,mat);
 
   marker.position.set(x,y,z);
   earth.add(marker);
@@ -110,9 +119,8 @@ async function searchCity(){
   const city = document.getElementById("city").value;
   if(!city) return;
 
-  // Геокодинг
   const geo = await fetch(
-   `https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=ru&format=json`
+   `https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1`
   ).then(r=>r.json());
 
   if(!geo.results){
@@ -125,14 +133,13 @@ async function searchCity(){
 
   addMarker(lat,lon);
 
-  // Погода
-  const weatherData = await fetch(
+  const wdata = await fetch(
    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
   ).then(r=>r.json());
 
-  const w = weatherData.current_weather;
+  const w = wdata.current_weather;
 
-  document.getElementById("weather").innerText =
+  weather.innerText =
    `${city}
 Температура: ${w.temperature}°C
 Ветер: ${w.windspeed} км/ч`;
@@ -142,7 +149,7 @@ async function searchCity(){
 window.addEventListener("resize",()=>{
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
 
