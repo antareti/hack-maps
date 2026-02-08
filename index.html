@@ -2,23 +2,14 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>3D Оранжевая карта мира</title>
+<title>Киберпанк 3D карта мира</title>
 <style>
   body { margin:0; overflow:hidden; background:#000; }
-  #weatherInfo { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:10px; border-radius:5px; color:#FFA500; font-family:sans-serif;}
-  input, button { background:#111; color:#FFA500; border:1px solid #FFA500; padding:5px; margin-top:5px;}
 </style>
 </head>
 <body>
-<div id="weatherInfo">
-  <input type="text" id="cityInput" placeholder="Введите город">
-  <button onclick="getWeather()">Показать погоду</button>
-  <div id="weatherText"></div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/loaders/TextureLoader.js"></script>
 
 <script>
 // Сцена и камера
@@ -34,22 +25,18 @@ light.position.set(10,10,10);
 scene.add(light);
 scene.add(new THREE.AmbientLight(0x222222));
 
-// Карта мира (черно-оранжевая)
-let geometry = new THREE.SphereGeometry(5, 128, 128);
+// Создаем "континенты" с помощью линии (wireframe)
+let earthRadius = 5;
+let segments = 64;
+let rings = 64;
 
-// Используем текстуру карты мира в оттенках серого и перекрашиваем в оранжевый
-let loader = new THREE.TextureLoader();
-loader.crossOrigin = '';
-loader.load('https://raw.githubusercontent.com/jeromeetienne/threex.planets/master/images/earthmap1k.jpg', function(texture){
-    let material = new THREE.MeshPhongMaterial({
-        map: texture,
-        color: 0xFFA500,
-        shininess: 5
-    });
-    let earth = new THREE.Mesh(geometry, material);
-    scene.add(earth);
-    window.earth = earth; // чтобы вращать
-});
+// Сфера Земли как основа
+let geometry = new THREE.SphereGeometry(earthRadius, segments, rings);
+
+// Материал: оранжевый wireframe
+let material = new THREE.MeshBasicMaterial({color:0xFFA500, wireframe:true});
+let earth = new THREE.Mesh(geometry, material);
+scene.add(earth);
 
 camera.position.z = 15;
 
@@ -58,35 +45,16 @@ let controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.minDistance = 7;
-controls.maxDistance = 20;
+controls.maxDistance = 25;
 
 // Анимация
 function animate(){
     requestAnimationFrame(animate);
-    if(window.earth) window.earth.rotation.y += 0.001;
+    earth.rotation.y += 0.0015; // медленное вращение
     controls.update();
     renderer.render(scene, camera);
 }
 animate();
-
-// Погода через OpenWeatherMap
-async function getWeather(){
-    let city = document.getElementById('cityInput').value;
-    if(!city) return alert('Введите город');
-    const apiKey = 'ВАШ_API_KEY'; // вставьте свой ключ
-    try{
-        let res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=ru&appid=${apiKey}`);
-        let data = await res.json();
-        if(data.cod != 200) {
-            document.getElementById('weatherText').innerText = 'Город не найден';
-            return;
-        }
-        let txt = `${data.name}, ${data.sys.country}\nПогода: ${data.weather[0].description}\nТемпература: ${data.main.temp}°C\nВетер: ${data.wind.speed} м/с`;
-        document.getElementById('weatherText').innerText = txt;
-    } catch(e){
-        document.getElementById('weatherText').innerText = 'Ошибка API';
-    }
-}
 
 // Подгонка при ресайзе
 window.addEventListener('resize', ()=>{
