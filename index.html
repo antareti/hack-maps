@@ -15,9 +15,12 @@
   <button onclick="getWeather()">Показать погоду</button>
   <div id="weatherText"></div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/controls/OrbitControls.js"></script>
+
 <script>
+// Сцена и камера
 let scene = new THREE.Scene();
 let camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
 let renderer = new THREE.WebGLRenderer({antialias:true});
@@ -25,14 +28,14 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Свет
-let light = new THREE.PointLight(0xFFA500, 1);
+let light = new THREE.PointLight(0xFFA500, 1.5);
 light.position.set(10,10,10);
 scene.add(light);
+scene.add(new THREE.AmbientLight(0x222222));
 
-// Сфера Земли
+// Сфера Земли (черно-оранжевая)
 let geometry = new THREE.SphereGeometry(5, 64, 64);
-let texture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/earth_atmos_2048.jpg');
-let material = new THREE.MeshPhongMaterial({map:texture});
+let material = new THREE.MeshPhongMaterial({color:0x111111, emissive:0xFFA500, shininess:10});
 let earth = new THREE.Mesh(geometry, material);
 scene.add(earth);
 
@@ -45,6 +48,7 @@ controls.dampingFactor = 0.05;
 controls.minDistance = 7;
 controls.maxDistance = 20;
 
+// Анимация
 function animate(){
     requestAnimationFrame(animate);
     controls.update();
@@ -52,11 +56,11 @@ function animate(){
 }
 animate();
 
-// Погода
+// Погода через OpenWeatherMap
 async function getWeather(){
     let city = document.getElementById('cityInput').value;
     if(!city) return alert('Введите город');
-    const apiKey = 'ваш_API_KEY_от_OpenWeatherMap';
+    const apiKey = 'ВАШ_API_KEY'; // вставьте свой ключ
     try{
         let res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=ru&appid=${apiKey}`);
         let data = await res.json();
@@ -70,6 +74,13 @@ async function getWeather(){
         document.getElementById('weatherText').innerText = 'Ошибка API';
     }
 }
+
+// Подгонка при ресайзе
+window.addEventListener('resize', ()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
 </body>
 </html>
