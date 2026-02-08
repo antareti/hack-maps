@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>3D Карта мира Wireframe</title>
+<title>3D Оранжевая карта мира</title>
 <style>
   body { margin:0; overflow:hidden; background:#000; }
   #weatherInfo { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:10px; border-radius:5px; color:#FFA500; font-family:sans-serif;}
@@ -18,6 +18,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/loaders/TextureLoader.js"></script>
+
 <script>
 // Сцена и камера
 let scene = new THREE.Scene();
@@ -32,11 +34,22 @@ light.position.set(10,10,10);
 scene.add(light);
 scene.add(new THREE.AmbientLight(0x222222));
 
-// Сфера с wireframe
-let geometry = new THREE.SphereGeometry(5, 64, 64);
-let material = new THREE.MeshBasicMaterial({color:0xFFA500, wireframe:true});
-let earth = new THREE.Mesh(geometry, material);
-scene.add(earth);
+// Карта мира (черно-оранжевая)
+let geometry = new THREE.SphereGeometry(5, 128, 128);
+
+// Используем текстуру карты мира в оттенках серого и перекрашиваем в оранжевый
+let loader = new THREE.TextureLoader();
+loader.crossOrigin = '';
+loader.load('https://raw.githubusercontent.com/jeromeetienne/threex.planets/master/images/earthmap1k.jpg', function(texture){
+    let material = new THREE.MeshPhongMaterial({
+        map: texture,
+        color: 0xFFA500,
+        shininess: 5
+    });
+    let earth = new THREE.Mesh(geometry, material);
+    scene.add(earth);
+    window.earth = earth; // чтобы вращать
+});
 
 camera.position.z = 15;
 
@@ -50,6 +63,7 @@ controls.maxDistance = 20;
 // Анимация
 function animate(){
     requestAnimationFrame(animate);
+    if(window.earth) window.earth.rotation.y += 0.001;
     controls.update();
     renderer.render(scene, camera);
 }
