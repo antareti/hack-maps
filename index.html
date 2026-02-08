@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>3D Карта мира с погодой</title>
+<title>3D Карта мира Wireframe</title>
 <style>
-  body { margin:0; overflow:hidden; background:#000; color:#FFA500; font-family:sans-serif;}
-  #weatherInfo { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:10px; border-radius:5px;}
+  body { margin:0; overflow:hidden; background:#000; }
+  #weatherInfo { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:10px; border-radius:5px; color:#FFA500; font-family:sans-serif;}
   input, button { background:#111; color:#FFA500; border:1px solid #FFA500; padding:5px; margin-top:5px;}
 </style>
 </head>
@@ -18,7 +18,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/controls/OrbitControls.js"></script>
-
 <script>
 // Сцена и камера
 let scene = new THREE.Scene();
@@ -33,9 +32,9 @@ light.position.set(10,10,10);
 scene.add(light);
 scene.add(new THREE.AmbientLight(0x222222));
 
-// Сфера Земли (черно-оранжевая)
+// Сфера с wireframe
 let geometry = new THREE.SphereGeometry(5, 64, 64);
-let material = new THREE.MeshPhongMaterial({color:0x111111, emissive:0xFFA500, shininess:10});
+let material = new THREE.MeshBasicMaterial({color:0xFFA500, wireframe:true});
 let earth = new THREE.Mesh(geometry, material);
 scene.add(earth);
 
