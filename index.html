@@ -2,54 +2,47 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Вращающийся оранжевый шар на зеленом фоне</title>
+<title>Вращающийся 2D шар</title>
 <style>
-  body { margin:0; overflow:hidden; background:#00FF00; } /* зеленый фон */
+  body { margin:0; overflow:hidden; background:#00FF00; }
+  canvas { display:block; }
 </style>
 </head>
 <body>
-<script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
-
+<canvas id="canvas"></canvas>
 <script>
-const scene = new THREE.Scene();
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-// Камера
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.z = 5;
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
 
-// Рендерер
-const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-// Свет
-const light = new THREE.PointLight(0xFFFFFF, 2);
-light.position.set(5,5,5);
-scene.add(light);
-scene.add(new THREE.AmbientLight(0x555555));
-
-// Сфера
-const geometry = new THREE.SphereGeometry(1, 64, 64); // 64 сегмента = реально круглый шар
-const material = new THREE.MeshStandardMaterial({color:0xFFA500});
-const sphere = new THREE.Mesh(geometry, material);
-scene.add(sphere);
-
-// Анимация вращения
 let angle = 0;
-function animate(){
+function animate() {
     requestAnimationFrame(animate);
-    angle += 0.02; // скорость вращения
-    sphere.rotation.y = angle;
-    renderer.render(scene, camera);
+    angle += 0.02;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const cx = canvas.width/2;
+    const cy = canvas.height/2;
+    const radius = 100;
+
+    // Имитация вращения: изменяем светлую сторону
+    const grad = ctx.createRadialGradient(cx + Math.sin(angle)*20, cy, radius/4, cx, cy, radius);
+    grad.addColorStop(0, '#FFD580');
+    grad.addColorStop(1, '#FFA500');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI*2);
+    ctx.fill();
 }
 animate();
-
-// Подгонка под размер окна
-window.addEventListener('resize', ()=>{
-    camera.aspect = window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
 </script>
 </body>
 </html>
