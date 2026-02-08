@@ -2,47 +2,64 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Вращающийся 2D шар</title>
+<title>Оранжевый вращающийся шар</title>
 <style>
-  body { margin:0; overflow:hidden; background:#00FF00; }
-  canvas { display:block; }
+  body{
+    margin:0;
+    overflow:hidden;
+    background:#00FF00; /* зелёный фон */
+  }
 </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
+
 <script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+// СЦЕНА
+const scene = new THREE.Scene();
 
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+// КАМЕРА
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.z = 3;
 
-let angle = 0;
-function animate() {
-    requestAnimationFrame(animate);
-    angle += 0.02;
+// РЕНДЕР
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// СФЕРА (оранжевая)
+const geometry = new THREE.SphereGeometry(1, 32, 32);
+const material = new THREE.MeshBasicMaterial({
+  color: 0xFFA500,
+  wireframe: false
+});
+const sphere = new THREE.Mesh(geometry, material);
+scene.add(sphere);
 
-    const cx = canvas.width/2;
-    const cy = canvas.height/2;
-    const radius = 100;
+// АНИМАЦИЯ (вращение)
+function animate(){
+  requestAnimationFrame(animate);
 
-    // Имитация вращения: изменяем светлую сторону
-    const grad = ctx.createRadialGradient(cx + Math.sin(angle)*20, cy, radius/4, cx, cy, radius);
-    grad.addColorStop(0, '#FFD580');
-    grad.addColorStop(1, '#FFA500');
+  sphere.rotation.y += 0.03; // быстро видно вращение
+  sphere.rotation.x += 0.01;
 
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI*2);
-    ctx.fill();
+  renderer.render(scene, camera);
 }
 animate();
+
+// RESIZE
+window.addEventListener("resize", ()=>{
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
+
 </body>
 </html>
