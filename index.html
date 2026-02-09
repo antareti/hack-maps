@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>3D Земля + Погода</title>
+<title>3D Земля + Погода + Слои</title>
 
 <style>
 body{
@@ -25,6 +25,10 @@ input,button{
   color:#FFA500;
   border:1px solid #FFA500;
   padding:5px;
+  margin:2px;
+}
+hr{
+  border:1px solid #333;
 }
 </style>
 </head>
@@ -34,6 +38,16 @@ input,button{
   <input id="city" placeholder="Город">
   <button onclick="searchCity()">Погода</button>
   <div id="weather"></div>
+
+  <hr>
+
+  Слои:<br>
+  <button onclick="setLayer('earth')">Обычная</button>
+  <button onclick="setLayer('clouds')">Облака</button>
+  <button onclick="setLayer('temp')">Температура</button>
+  <button onclick="setLayer('rain')">Осадки</button>
+  <button onclick="setLayer('wind')">Ветры</button>
+  <button onclick="setLayer('night')">Ночь</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
@@ -54,7 +68,7 @@ const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// ===== СФЕРА =====
+// ===== ЗЕМЛЯ =====
 const geometry = new THREE.SphereGeometry(1,64,64);
 
 const material = new THREE.MeshBasicMaterial({
@@ -64,21 +78,53 @@ const material = new THREE.MeshBasicMaterial({
 const earth = new THREE.Mesh(geometry,material);
 scene.add(earth);
 
-// ===== ТЕКСТУРА =====
 const loader = new THREE.TextureLoader();
 
-loader.load(
-"https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg",
-(texture)=>{
+// ===== ТЕКСТУРЫ СЛОЁВ =====
+const textures = {
+
+  earth:
+  "https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg",
+
+  clouds:
+  "https://realearth.ssec.wisc.edu/api/image?products=globalir&x=2048&y=1024",
+
+  temp:
+  "https://tile.openweathermap.org/map/temp_new/0/0/0.png?appid=demo",
+
+  rain:
+  "https://tile.openweathermap.org/map/precipitation_new/0/0/0.png?appid=demo",
+
+  wind:
+  "https://tile.openweathermap.org/map/wind_new/0/0/0.png?appid=demo",
+
+  night:
+  "https://threejs.org/examples/textures/planets/earth_lights_2048.png"
+};
+
+// ===== СТАРТОВАЯ ТЕКСТУРА =====
+loader.load(textures.earth,(texture)=>{
   earth.material = new THREE.MeshBasicMaterial({
     map:texture
   });
-},
-undefined,
-()=>{
-  console.log("Текстура не загрузилась — оставлен оранжевый шар");
+});
+
+// ===== ПЕРЕКЛЮЧЕНИЕ СЛОЁВ =====
+function setLayer(layer){
+
+  const url = textures[layer];
+  if(!url) return;
+
+  loader.load(url,(texture)=>{
+
+    earth.material = new THREE.MeshBasicMaterial({
+      map:texture
+    });
+
+  },undefined,()=>{
+    console.log("Ошибка загрузки слоя:",layer);
+  });
 }
-);
 
 // ===== ВРАЩЕНИЕ =====
 function animate(){
@@ -113,10 +159,8 @@ function speak(text){
   const utter = new SpeechSynthesisUtterance(text);
 
   utter.lang = "ru-RU";
-  utter.rate = 1;
-  utter.pitch = 1;
 
-  synth.cancel(); // остановить старую речь
+  synth.cancel();
   synth.speak(utter);
 }
 
@@ -157,7 +201,6 @@ async function searchCity(){
 Температура: ${w.temperature}°C
 Ветер: ${w.windspeed} км/ч`;
 
-  // ОЗВУЧКА
   speak(text);
 }
 
