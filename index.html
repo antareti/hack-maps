@@ -39,7 +39,7 @@ input,button{
 <div id="weather"></div>
 <hr>
 Клик по Земле → погода<br>
-✈️ Самолёты обновляются каждые 15 сек
+✈️ Самолёты live
 
 </div>
 
@@ -56,7 +56,6 @@ camera.position.z=3;
 
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth,window.innerHeight);
-renderer.shadowMap.enabled=true;
 document.body.appendChild(renderer.domElement);
 
 // ===== СОЛНЦЕ =====
@@ -71,22 +70,19 @@ const earthTexture=new THREE.TextureLoader().load(
 "https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg"
 );
 
-const earthMaterial=new THREE.MeshPhongMaterial({
-map:earthTexture
-});
-
-const earth=new THREE.Mesh(geometry,earthMaterial);
+const earth=new THREE.Mesh(
+geometry,
+new THREE.MeshPhongMaterial({map:earthTexture})
+);
 scene.add(earth);
 
 // ===== НОЧЬ =====
-const nightTexture=new THREE.TextureLoader().load(
-"https://threejs.org/examples/textures/planets/earth_lights_2048.png"
-);
-
 const night=new THREE.Mesh(
 geometry,
 new THREE.MeshBasicMaterial({
-map:nightTexture,
+map:new THREE.TextureLoader().load(
+"https://threejs.org/examples/textures/planets/earth_lights_2048.png"
+),
 transparent:true,
 opacity:0.6,
 blending:THREE.AdditiveBlending
@@ -95,14 +91,12 @@ blending:THREE.AdditiveBlending
 scene.add(night);
 
 // ===== ОБЛАКА =====
-const cloudTexture=new THREE.TextureLoader().load(
-"https://threejs.org/examples/textures/planets/earth_clouds_1024.png"
-);
-
 const clouds=new THREE.Mesh(
 new THREE.SphereGeometry(1.01,64,64),
 new THREE.MeshLambertMaterial({
-map:cloudTexture,
+map:new THREE.TextureLoader().load(
+"https://threejs.org/examples/textures/planets/earth_clouds_1024.png"
+),
 transparent:true,
 opacity:0.4
 })
@@ -130,16 +124,20 @@ earth.add(marker);
 
 // ===== ОЗВУЧКА =====
 function speak(text){
-const u=new SpeechSynthesisUtterance(text);
-u.lang="ru-RU";
+
+const utter=new SpeechSynthesisUtterance(text);
+utter.lang="ru-RU";
+utter.rate=1;
+utter.pitch=1;
+
 speechSynthesis.cancel();
-speechSynthesis.speak(u);
+speechSynthesis.speak(utter);
 }
 
 // ===== ПОГОДА ГОРОДА =====
 async function searchCity(){
 
-const city=cityInput.value;
+const city=document.getElementById("city").value;
 if(!city) return;
 
 const geo=await fetch(
@@ -152,15 +150,10 @@ speak("Город не найден");
 return;
 }
 
-const {latitude,longitude}=geo.results[0];
+const lat=geo.results[0].latitude;
+const lon=geo.results[0].longitude;
 
-addMarker(latitude,longitude);
-
-getWeather(latitude,longitude,city);
-}
-
-// ===== ПОГОДА КООРД =====
-async function getWeather(lat,lon,city="Точка"){
+addMarker(lat,lon);
 
 const data=await fetch(
 `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
@@ -168,15 +161,19 @@ const data=await fetch(
 
 const w=data.current_weather;
 
+// текст на экран
 weather.innerText=
 `${city}
 Температура: ${w.temperature}°C
 Ветер: ${w.windspeed} км/ч`;
 
-speak(
-`${city}. Температура ${w.temperature} градусов.
-Ветер ${w.windspeed} километров в час.`
-);
+// текст озвучки (именно введённый город)
+const voiceText=
+`Город ${city}.
+Температура ${w.temperature} градусов.
+Скорость ветра ${w.windspeed} километров в час.`;
+
+speak(voiceText);
 }
 
 // ===== КЛИК ПО ШАРУ =====
@@ -199,8 +196,6 @@ const lat=90-(Math.acos(p.y)*180/Math.PI);
 const lon=((Math.atan2(p.z,p.x)*180/Math.PI)+180)%360-180;
 
 addMarker(lat,lon,0x00ff00);
-
-getWeather(lat,lon,"Точка клика");
 });
 
 // ===== САМОЛЁТЫ =====
@@ -208,7 +203,6 @@ let planes=[];
 
 async function loadPlanes(){
 
-// очистка старых
 planes.forEach(p=>earth.remove(p));
 planes=[];
 
@@ -222,7 +216,6 @@ data.states.slice(0,200).forEach(s=>{
 
 const lat=s[6];
 const lon=s[5];
-
 if(!lat||!lon) return;
 
 const phi=(90-lat)*(Math.PI/180);
@@ -246,7 +239,6 @@ planes.push(plane);
 
 }
 
-// обновление каждые 15 сек
 setInterval(loadPlanes,15000);
 loadPlanes();
 
