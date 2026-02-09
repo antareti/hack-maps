@@ -54,10 +54,9 @@ const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// ===== СФЕРА (видна сразу) =====
+// ===== СФЕРА =====
 const geometry = new THREE.SphereGeometry(1,64,64);
 
-// БАЗОВЫЙ ОРАНЖЕВЫЙ МАТЕРИАЛ
 const material = new THREE.MeshBasicMaterial({
   color:0xFFA500
 });
@@ -65,23 +64,17 @@ const material = new THREE.MeshBasicMaterial({
 const earth = new THREE.Mesh(geometry,material);
 scene.add(earth);
 
-// ===== ЗАГРУЗКА КАРТЫ =====
+// ===== ТЕКСТУРА =====
 const loader = new THREE.TextureLoader();
 
 loader.load(
 "https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg",
-
-// УСПЕШНО
 (texture)=>{
   earth.material = new THREE.MeshBasicMaterial({
     map:texture
   });
 },
-
-// ПРОГРЕСС
 undefined,
-
-// ОШИБКА
 ()=>{
   console.log("Текстура не загрузилась — оставлен оранжевый шар");
 }
@@ -113,6 +106,20 @@ function addMarker(lat,lon){
   earth.add(marker);
 }
 
+// ===== ОЗВУЧКА =====
+function speak(text){
+
+  const synth = window.speechSynthesis;
+  const utter = new SpeechSynthesisUtterance(text);
+
+  utter.lang = "ru-RU";
+  utter.rate = 1;
+  utter.pitch = 1;
+
+  synth.cancel(); // остановить старую речь
+  synth.speak(utter);
+}
+
 // ===== ПОГОДА =====
 async function searchCity(){
 
@@ -125,6 +132,7 @@ async function searchCity(){
 
   if(!geo.results){
     weather.innerText="Город не найден";
+    speak("Город не найден");
     return;
   }
 
@@ -139,10 +147,18 @@ async function searchCity(){
 
   const w = wdata.current_weather;
 
+  const text =
+`${city}.
+Температура ${w.temperature} градусов.
+Скорость ветра ${w.windspeed} километров в час.`;
+
   weather.innerText =
-   `${city}
+`${city}
 Температура: ${w.temperature}°C
 Ветер: ${w.windspeed} км/ч`;
+
+  // ОЗВУЧКА
+  speak(text);
 }
 
 // ===== RESIZE =====
