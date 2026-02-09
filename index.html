@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>3D Земля PRO + Самолёты + Опасные зоны</title>
+<title>3D Земля PRO + Опасные зоны крест</title>
 
 <style>
 body{
@@ -36,7 +36,8 @@ input,button{
 <button onclick="searchCity()">Погода</button>
 <div id="weather"></div>
 <hr>
-🔴 Война &nbsp; 🟠 Штормы
+Клик по Земле → погода<br>
+✈️ Самолёты live
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
@@ -61,7 +62,6 @@ scene.add(sun);
 
 // ===== ЗЕМЛЯ =====
 const geometry=new THREE.SphereGeometry(1,64,64);
-
 const earth=new THREE.Mesh(
 geometry,
 new THREE.MeshPhongMaterial({
@@ -100,10 +100,8 @@ scene.add(clouds);
 
 // ===== МАРКЕР =====
 function addMarker(lat,lon,color=0xff0000){
-
 const phi=(90-lat)*(Math.PI/180);
 const theta=(lon+180)*(Math.PI/180);
-
 const x=-Math.sin(phi)*Math.cos(theta);
 const y=Math.cos(phi);
 const z=Math.sin(phi)*Math.sin(theta);
@@ -112,7 +110,6 @@ const marker=new THREE.Mesh(
 new THREE.SphereGeometry(0.02,16,16),
 new THREE.MeshBasicMaterial({color})
 );
-
 marker.position.set(x,y,z);
 earth.add(marker);
 }
@@ -127,7 +124,6 @@ speechSynthesis.speak(u);
 
 // ===== ПОГОДА ГОРОДА =====
 async function searchCity(){
-
 const city=document.getElementById("city").value;
 if(!city) return;
 
@@ -169,17 +165,14 @@ const raycaster=new THREE.Raycaster();
 const mouse=new THREE.Vector2();
 
 window.addEventListener("click",(e)=>{
-
 mouse.x=(e.clientX/window.innerWidth)*2-1;
 mouse.y=-(e.clientY/window.innerHeight)*2+1;
 
 raycaster.setFromCamera(mouse,camera);
 const hit=raycaster.intersectObject(earth);
-
 if(!hit.length) return;
 
 const p=hit[0].point;
-
 const lat=90-(Math.acos(p.y)*180/Math.PI);
 const lon=((Math.atan2(p.z,p.x)*180/Math.PI)+180)%360-180;
 
@@ -188,20 +181,16 @@ addMarker(lat,lon,0x00ff00);
 
 // ===== САМОЛЁТЫ =====
 let planes=[];
-
 async function loadPlanes(){
-
 planes.forEach(p=>earth.remove(p));
 planes=[];
 
 const data=await fetch(
 "https://opensky-network.org/api/states/all"
 ).then(r=>r.json());
-
 if(!data.states) return;
 
 data.states.slice(0,200).forEach(s=>{
-
 const lat=s[6];
 const lon=s[5];
 if(!lat||!lon) return;
@@ -217,22 +206,18 @@ const plane=new THREE.Mesh(
 new THREE.SphereGeometry(0.01,8,8),
 new THREE.MeshBasicMaterial({color:0xffff00})
 );
-
 plane.position.set(x*1.02,y*1.02,z*1.02);
 
 earth.add(plane);
 planes.push(plane);
-
 });
-
 }
 
 setInterval(loadPlanes,15000);
 loadPlanes();
 
-// ===== ОПАСНЫЕ ЗОНЫ =====
-function addDangerZone(lat,lon,radius,color){
-
+// ===== ОПАСНЫЕ ЗОНЫ КРЕСТИК =====
+function addCross(lat,lon,color,size=0.05){
 const phi=(90-lat)*(Math.PI/180);
 const theta=(lon+180)*(Math.PI/180);
 
@@ -240,37 +225,39 @@ const x=-Math.sin(phi)*Math.cos(theta);
 const y=Math.cos(phi);
 const z=Math.sin(phi)*Math.sin(theta);
 
-const zone=new THREE.Mesh(
-new THREE.SphereGeometry(radius,32,32),
-new THREE.MeshBasicMaterial({
-color,
-transparent:true,
-opacity:0.25
-})
-);
+// Горизонтальная линия
+const geom1=new THREE.BufferGeometry().setFromPoints([
+new THREE.Vector3(x-size,y,z-size),
+new THREE.Vector3(x+size,y,z+size)
+]);
+const line1=new THREE.Line(geom1,new THREE.LineBasicMaterial({color}));
+earth.add(line1);
 
-zone.position.set(x*1.01,y*1.01,z*1.01);
-earth.add(zone);
+// Вертикальная линия
+const geom2=new THREE.BufferGeometry().setFromPoints([
+new THREE.Vector3(x-size,y,z+size),
+new THREE.Vector3(x+size,y,z-size)
+]);
+const line2=new THREE.Line(geom2,new THREE.LineBasicMaterial({color}));
+earth.add(line2);
 }
 
-// 🔴 ВОЙНА
-addDangerZone(48.5,31,0.25,0xff0000); // Украина
-addDangerZone(33,44,0.2,0xff0000);   // Ирак
-addDangerZone(31,35,0.15,0xff0000);  // Израиль
+// 🔴 Война
+addCross(48.5,31,0xff0000); // Украина
+addCross(33,44,0xff0000);   // Ирак
+addCross(31,35,0xff0000);   // Израиль
 
-// 🟠 ШТОРМЫ
-addDangerZone(15,-60,0.3,0xff8800); // Атлантика
-addDangerZone(10,120,0.3,0xff8800); // Филиппины
-addDangerZone(-15,160,0.25,0xff8800); // Тихий океан
+// 🟠 Штормы
+addCross(15,-60,0xff8800);   // Атлантика
+addCross(10,120,0xff8800);   // Филиппины
+addCross(-15,160,0xff8800);  // Тихий океан
 
 // ===== ВРАЩЕНИЕ =====
 function animate(){
 requestAnimationFrame(animate);
-
 earth.rotation.y+=0.0015;
 clouds.rotation.y+=0.002;
 night.rotation.y+=0.0015;
-
 renderer.render(scene,camera);
 }
 animate();
