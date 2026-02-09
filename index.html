@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>3D Земля + Погода + Слои</title>
+<title>3D Земля PRO</title>
 
 <style>
 body{
@@ -20,34 +20,13 @@ body{
   border-radius:8px;
   color:#FFA500;
 }
-input,button{
-  background:#111;
-  color:#FFA500;
-  border:1px solid #FFA500;
-  padding:5px;
-  margin:2px;
-}
-hr{
-  border:1px solid #333;
-}
 </style>
 </head>
 <body>
 
 <div id="ui">
-  <input id="city" placeholder="Город">
-  <button onclick="searchCity()">Погода</button>
-  <div id="weather"></div>
-
-  <hr>
-
-  Слои:<br>
-  <button onclick="setLayer('earth')">Обычная</button>
-  <button onclick="setLayer('clouds')">Облака</button>
-  <button onclick="setLayer('temp')">Температура</button>
-  <button onclick="setLayer('rain')">Осадки</button>
-  <button onclick="setLayer('wind')">Ветры</button>
-  <button onclick="setLayer('night')">Ночь</button>
+Клик по Земле → погода точки 🌍
+<div id="weather"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
@@ -57,158 +36,165 @@ hr{
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
-  60,
-  window.innerWidth/window.innerHeight,
-  0.1,
-  1000
+60,
+window.innerWidth/window.innerHeight,
+0.1,
+1000
 );
 camera.position.z = 3;
 
 const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// ===== ЗЕМЛЯ =====
+// ===== СВЕТ (СОЛНЦЕ) =====
+const sunLight = new THREE.DirectionalLight(0xffffff,1.5);
+sunLight.position.set(5,0,5);
+scene.add(sunLight);
+
+// ===== ГЛОБУС =====
 const geometry = new THREE.SphereGeometry(1,64,64);
 
-const material = new THREE.MeshBasicMaterial({
-  color:0xFFA500
+const earthTexture = new THREE.TextureLoader().load(
+"https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg"
+);
+
+const earthMaterial = new THREE.MeshPhongMaterial({
+map:earthTexture
 });
 
-const earth = new THREE.Mesh(geometry,material);
+const earth = new THREE.Mesh(geometry,earthMaterial);
+earth.castShadow = true;
+earth.receiveShadow = true;
 scene.add(earth);
 
-const loader = new THREE.TextureLoader();
+// ===== НОЧНЫЕ ОГНИ =====
+const nightTexture = new THREE.TextureLoader().load(
+"https://threejs.org/examples/textures/planets/earth_lights_2048.png"
+);
 
-// ===== ТЕКСТУРЫ СЛОЁВ =====
-const textures = {
-
-  earth:
-  "https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg",
-
-  clouds:
-  "https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57730/land_ocean_ice_cloud_2048.jpg",
-
-  temp:
-  "https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x5400x2700.jpg",
-
-  rain:
-  "https://eoimages.gsfc.nasa.gov/images/imagerecords/79000/79765/global_rainfall_2000_2004_lrg.jpg",
-
-  wind:
-  "https://upload.wikimedia.org/wikipedia/commons/2/2c/World_Wind_Map.png",
-
-  night:
-  "https://threejs.org/examples/textures/planets/earth_lights_2048.png"
-};
-
-// ===== СТАРТОВАЯ ТЕКСТУРА =====
-loader.load(textures.earth,(texture)=>{
-  earth.material = new THREE.MeshBasicMaterial({
-    map:texture
-  });
+const nightMaterial = new THREE.MeshBasicMaterial({
+map:nightTexture,
+blending:THREE.AdditiveBlending,
+transparent:true,
+opacity:0.6
 });
 
-// ===== ПЕРЕКЛЮЧЕНИЕ СЛОЁВ =====
-function setLayer(layer){
+const night = new THREE.Mesh(geometry,nightMaterial);
+scene.add(night);
 
-  const url = textures[layer];
-  if(!url) return;
+// ===== ОБЛАКА =====
+const cloudTexture = new THREE.TextureLoader().load(
+"https://threejs.org/examples/textures/planets/earth_clouds_1024.png"
+);
 
-  loader.load(url,(texture)=>{
+const cloudMaterial = new THREE.MeshLambertMaterial({
+map:cloudTexture,
+transparent:true,
+opacity:0.4
+});
 
-    earth.material = new THREE.MeshBasicMaterial({
-      map:texture
-    });
+const clouds = new THREE.Mesh(
+new THREE.SphereGeometry(1.01,64,64),
+cloudMaterial
+);
 
-  },undefined,()=>{
-    console.log("Ошибка загрузки слоя:",layer);
-  });
-}
+scene.add(clouds);
 
-// ===== ВРАЩЕНИЕ =====
-function animate(){
-  requestAnimationFrame(animate);
-  earth.rotation.y += 0.002;
-  renderer.render(scene,camera);
-}
-animate();
+// ===== RAYCAST ДЛЯ КЛИКА =====
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+window.addEventListener("click",async (event)=>{
+
+mouse.x = (event.clientX/window.innerWidth)*2-1;
+mouse.y = -(event.clientY/window.innerHeight)*2+1;
+
+raycaster.setFromCamera(mouse,camera);
+const intersects = raycaster.intersectObject(earth);
+
+if(!intersects.length) return;
+
+const point = intersects[0].point;
+
+const lat = 90 - (Math.acos(point.y)*180/Math.PI);
+const lon =
+((Math.atan2(point.z,point.x)*180/Math.PI)+180)%360-180;
+
+getWeather(lat,lon);
+});
 
 // ===== МАРКЕР =====
 function addMarker(lat,lon){
 
-  const phi = (90-lat)*(Math.PI/180);
-  const theta = (lon+180)*(Math.PI/180);
+const phi=(90-lat)*(Math.PI/180);
+const theta=(lon+180)*(Math.PI/180);
 
-  const x = -Math.sin(phi)*Math.cos(theta);
-  const y = Math.cos(phi);
-  const z = Math.sin(phi)*Math.sin(theta);
+const x=-Math.sin(phi)*Math.cos(theta);
+const y=Math.cos(phi);
+const z=Math.sin(phi)*Math.sin(theta);
 
-  const geo = new THREE.SphereGeometry(0.02,16,16);
-  const mat = new THREE.MeshBasicMaterial({color:0xff0000});
-  const marker = new THREE.Mesh(geo,mat);
+const marker=new THREE.Mesh(
+new THREE.SphereGeometry(0.02,16,16),
+new THREE.MeshBasicMaterial({color:0xff0000})
+);
 
-  marker.position.set(x,y,z);
-  earth.add(marker);
+marker.position.set(x,y,z);
+earth.add(marker);
 }
 
 // ===== ОЗВУЧКА =====
 function speak(text){
 
-  const synth = window.speechSynthesis;
-  const utter = new SpeechSynthesisUtterance(text);
+const synth=window.speechSynthesis;
+const utter=new SpeechSynthesisUtterance(text);
 
-  utter.lang = "ru-RU";
+utter.lang="ru-RU";
 
-  synth.cancel();
-  synth.speak(utter);
+synth.cancel();
+synth.speak(utter);
 }
 
-// ===== ПОГОДА =====
-async function searchCity(){
+// ===== ПОГОДА ПО КООРД =====
+async function getWeather(lat,lon){
 
-  const city = document.getElementById("city").value;
-  if(!city) return;
+addMarker(lat,lon);
 
-  const geo = await fetch(
-   `https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1`
-  ).then(r=>r.json());
+const data=await fetch(
+`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
+).then(r=>r.json());
 
-  if(!geo.results){
-    weather.innerText="Город не найден";
-    speak("Город не найден");
-    return;
-  }
+const w=data.current_weather;
 
-  const lat = geo.results[0].latitude;
-  const lon = geo.results[0].longitude;
+const text=
+`Температура ${w.temperature} градусов.
+Ветер ${w.windspeed} километров в час.`;
 
-  addMarker(lat,lon);
-
-  const wdata = await fetch(
-   `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
-  ).then(r=>r.json());
-
-  const w = wdata.current_weather;
-
-  const text =
-`${city}.
-Температура ${w.temperature} градусов.
-Скорость ветра ${w.windspeed} километров в час.`;
-
-  weather.innerText =
-`${city}
-Температура: ${w.temperature}°C
+weather.innerText=
+`Температура: ${w.temperature}°C
 Ветер: ${w.windspeed} км/ч`;
 
-  speak(text);
+speak(text);
 }
+
+// ===== ВРАЩЕНИЕ =====
+function animate(){
+requestAnimationFrame(animate);
+
+earth.rotation.y+=0.0015;
+clouds.rotation.y+=0.002;
+night.rotation.y+=0.0015;
+
+renderer.render(scene,camera);
+}
+animate();
 
 // ===== RESIZE =====
 window.addEventListener("resize",()=>{
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+camera.aspect=window.innerWidth/window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth,window.innerHeight);
 });
 </script>
 
